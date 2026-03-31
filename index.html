@@ -49,10 +49,24 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      padding-bottom: clamp(40px, 10vh, 90px);
+      /* safe area padding for notch/home-bar phones */
+      padding-bottom: max(clamp(36px, 8vh, 80px), env(safe-area-inset-bottom, 0px) + 36px);
+      padding-left:  env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
       cursor: pointer;
+      /* use 100dvh so mobile browser chrome doesn't cut it off */
+      height: 100dvh;
+      height: 100vh; /* fallback */
     }
-    #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    @supports (height: 100dvh) {
+      #splash { height: 100dvh; }
+    }
+
+    #splash.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
 
     #splash video {
       position: absolute;
@@ -60,15 +74,20 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center center;
       pointer-events: none;
+      /* ensure it fills on all aspect ratios */
+      min-width: 100%;
+      min-height: 100%;
     }
 
+    /* bottom gradient so text always readable */
     #splash::after {
       content: '';
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 50%;
-      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      height: 55%;
+      background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
       pointer-events: none;
       z-index: 1;
     }
@@ -77,35 +96,54 @@
       position: relative;
       z-index: 2;
       text-align: center;
-      padding: 0 clamp(16px, 6vw, 48px);
+      /* fluid horizontal padding */
+      padding: 0 clamp(20px, 8vw, 60px);
       pointer-events: none;
       width: 100%;
-      max-width: 640px;
+      max-width: 600px;
     }
 
     .splash-quote {
       font-family: 'Cormorant Garamond', serif;
       font-style: italic;
-      font-size: clamp(16px, 4.5vw, 26px);
-      color: var(--white);
-      letter-spacing: clamp(0.08em, 2vw, 0.22em);
-      text-shadow: 0 2px 30px rgba(0,0,0,0.9);
+      /* fluid font: readable on 320px up to large desktop */
+      font-size: clamp(15px, 4.5vw, 26px);
+      color: #fffdf9;
+      /* fluid letter-spacing: tight on mobile, airy on desktop */
+      letter-spacing: clamp(0.06em, 1.5vw, 0.20em);
+      text-shadow: 0 2px 24px rgba(0,0,0,0.95);
       opacity: 0;
-      animation: fadeIn 1.4s 0.6s ease forwards;
-      line-height: 1.5;
+      animation: fadeIn 1.4s 0.5s ease forwards;
+      line-height: 1.55;
+      word-break: break-word;
     }
 
     .splash-divider {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: clamp(8px, 3vw, 14px);
       justify-content: center;
-      margin: 14px auto 0;
+      margin: clamp(10px, 2.5vh, 18px) auto 0;
       opacity: 0;
-      animation: fadeIn 1s 1.3s ease forwards;
+      animation: fadeIn 1s 1.2s ease forwards;
     }
-    .splash-divider span { width: clamp(30px, 8vw, 50px); height: 1px; background: var(--gold); display: block; opacity: 0.6; }
-    .splash-divider i { color: var(--gold); font-style: normal; font-size: 10px; }
+    .splash-divider span {
+      width: clamp(24px, 7vw, 50px);
+      height: 1px;
+      background: var(--gold);
+      display: block;
+      opacity: 0.6;
+    }
+    .splash-divider i { color: var(--gold); font-style: normal; font-size: 9px; }
+
+    /* mobile-specific splash tweaks */
+    @media (max-width: 480px) {
+      .splash-quote { font-size: clamp(14px, 5vw, 20px); }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      #splash { padding-bottom: clamp(16px, 4vh, 32px); align-items: center; }
+      .splash-quote { font-size: clamp(12px, 3.5vw, 18px); }
+    }
 
     /* ── BACKGROUND / MAIN ── */
     #main {
@@ -606,7 +644,7 @@
 
   <!-- SPLASH -->
   <div id="splash">
-    <video id="splashVideo" muted playsinline preload="auto" poster="poster.jpg">
+    <video id="splashVideo" autoplay muted playsinline preload="auto" poster="poster.jpg">
       <source src="splash.mp4" type="video/mp4" />
     </video>
 
@@ -772,14 +810,21 @@
 
     document.body.classList.add('splash-active');
 
-    // Force first frame to render on mobile (Android fallback)
-    splashVideo.addEventListener('loadedmetadata', function() {
-      splashVideo.currentTime = 0.001;
+    // MOBILE FIRST-FRAME FIX:
+    // Autoplay → immediately pause at frame 0.
+    // This forces mobile browsers to decode & show the first frame (envelope).
+    // Without this, mobile shows a black screen before user taps.
+    splashVideo.addEventListener('canplay', function() {
+      if (!playing) {
+        splashVideo.currentTime = 0;
+        splashVideo.pause();
+      }
     }, { once: true });
 
     function dismiss() {
       if (dismissed) return;
       dismissed = true;
+      splashVideo.pause();
       splash.style.transition = 'none';
       splash.classList.add('hidden');
       document.body.classList.remove('splash-active');
@@ -789,13 +834,14 @@
     function startVideo() {
       if (playing) return;
       playing = true;
+      splashVideo.currentTime = 0; // always play from the very beginning
       splashVideo.play().catch(() => dismiss());
     }
 
     // Video ends naturally → open main page
     splashVideo.addEventListener('ended', dismiss);
 
-    // Fallback if video errors
+    // Video error → open main page
     splashVideo.addEventListener('error', () => setTimeout(dismiss, 400));
 
     // Tap / click → play the envelope video
