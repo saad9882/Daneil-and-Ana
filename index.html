@@ -32,18 +32,25 @@
       font-family: 'Raleway', sans-serif;
       font-weight: 300;
       overflow-x: hidden;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
     }
 
     /* ── SPLASH ── */
+    body.splash-active { overflow: hidden; }
+
     #splash {
       position: fixed;
       inset: 0;
       z-index: 9999;
       background: #000;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      transition: opacity 1s ease, visibility 1s ease;
+      padding-bottom: clamp(40px, 10vh, 90px);
+      cursor: pointer;
     }
     #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
@@ -53,37 +60,51 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      pointer-events: none;
+    }
+
+    #splash::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 1;
     }
 
     .splash-content {
       position: relative;
       z-index: 2;
       text-align: center;
-      padding: 0 32px;
+      padding: 0 clamp(16px, 6vw, 48px);
       pointer-events: none;
+      width: 100%;
+      max-width: 640px;
     }
 
     .splash-quote {
       font-family: 'Cormorant Garamond', serif;
       font-style: italic;
-      font-size: clamp(18px, 4vw, 28px);
+      font-size: clamp(16px, 4.5vw, 26px);
       color: var(--white);
-      letter-spacing: 0.22em;
-      text-shadow: 0 2px 30px rgba(0,0,0,0.8);
+      letter-spacing: clamp(0.08em, 2vw, 0.22em);
+      text-shadow: 0 2px 30px rgba(0,0,0,0.9);
       opacity: 0;
       animation: fadeIn 1.4s 0.6s ease forwards;
+      line-height: 1.5;
     }
 
     .splash-divider {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       justify-content: center;
-      margin: 16px auto 0;
+      margin: 14px auto 0;
       opacity: 0;
-      animation: fadeIn 1s 1.2s ease forwards;
+      animation: fadeIn 1s 1.3s ease forwards;
     }
-    .splash-divider span { width: 50px; height: 1px; background: var(--gold); display: block; opacity: 0.6; }
+    .splash-divider span { width: clamp(30px, 8vw, 50px); height: 1px; background: var(--gold); display: block; opacity: 0.6; }
     .splash-divider i { color: var(--gold); font-style: normal; font-size: 10px; }
 
     /* ── BACKGROUND / MAIN ── */
@@ -585,7 +606,7 @@
 
   <!-- SPLASH -->
   <div id="splash">
-    <video id="splashVideo" autoplay muted playsinline>
+    <video id="splashVideo" muted playsinline preload="auto">
       <source src="splash.mp4" type="video/mp4" />
     </video>
 
@@ -599,7 +620,7 @@
 
   <!-- BACKGROUND MUSIC -->
   <audio id="bgMusic" loop>
-    <source src="music.mp3" type="audio/mpeg" />
+    <source src="music/music.mp3" type="audio/mpeg" />
   </audio>
 
   <!-- MAIN -->
@@ -746,28 +767,38 @@
     // ── SPLASH ──
     const splashVideo = document.getElementById('splashVideo');
     const splash      = document.getElementById('splash');
+    let   playing     = false;
+    let   dismissed   = false;
 
-    splashVideo.playbackRate = 1.2;
+    document.body.classList.add('splash-active');
 
-    splashVideo.addEventListener('timeupdate', () => {
-      if (splashVideo.currentTime >= 3.5) {
-        splashVideo.pause();
-        splash.classList.add('hidden');
-        tryPlayMusic();
-      }
-    });
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
+      splash.style.transition = 'none';
+      splash.classList.add('hidden');
+      document.body.classList.remove('splash-active');
+      tryPlayMusic();
+    }
 
-    splashVideo.addEventListener('error', () => {
-      setTimeout(() => { splash.classList.add('hidden'); tryPlayMusic(); }, 900);
-    });
+    function startVideo() {
+      if (playing) return;
+      playing = true;
+      splashVideo.play().catch(() => dismiss());
+    }
 
-    // Fallback
-    setTimeout(() => {
-      if (!splash.classList.contains('hidden')) {
-        splash.classList.add('hidden');
-        tryPlayMusic();
-      }
-    }, 6000);
+    // Video ends naturally → open main page
+    splashVideo.addEventListener('ended', dismiss);
+
+    // Fallback if video errors
+    splashVideo.addEventListener('error', () => setTimeout(dismiss, 400));
+
+    // Tap / click → play the envelope video
+    splash.addEventListener('click', startVideo);
+    splash.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      startVideo();
+    }, { passive: false });
 
     // ── MUSIC ──
     const music = document.getElementById('bgMusic');
