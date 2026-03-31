@@ -606,7 +606,7 @@
 
   <!-- SPLASH -->
   <div id="splash">
-    <video id="splashVideo" muted playsinline preload="auto">
+    <video id="splashVideo" muted playsinline preload="auto" poster="poster.jpg">
       <source src="splash.mp4" type="video/mp4" />
     </video>
 
@@ -771,6 +771,11 @@
     let   dismissed   = false;
 
     document.body.classList.add('splash-active');
+
+    // Force first frame to render on mobile (Android fallback)
+    splashVideo.addEventListener('loadedmetadata', function() {
+      splashVideo.currentTime = 0.001;
+    }, { once: true });
 
     function dismiss() {
       if (dismissed) return;
