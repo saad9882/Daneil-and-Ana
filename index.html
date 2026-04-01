@@ -81,16 +81,8 @@
       min-height: 100%;
     }
 
-    /* bottom gradient so text always readable */
-    #splash::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 55%;
-      background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
-      pointer-events: none;
-      z-index: 1;
-    }
+    /* bottom gradient removed — was darkening envelope */
+    #splash::after { display: none; }
 
     .splash-content {
       position: relative;
@@ -103,7 +95,20 @@
       max-width: 600px;
     }
 
-    
+    .splash-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      /* fluid font: readable on 320px up to large desktop */
+      font-size: clamp(15px, 4.5vw, 26px);
+      color: #fffdf9;
+      /* fluid letter-spacing: tight on mobile, airy on desktop */
+      letter-spacing: clamp(0.06em, 1.5vw, 0.20em);
+      text-shadow: 0 2px 24px rgba(0,0,0,0.95);
+      opacity: 0;
+      animation: fadeIn 1.4s 0.5s ease forwards;
+      line-height: 1.55;
+      word-break: break-word;
+    }
 
     .splash-divider {
       display: flex;
@@ -137,7 +142,10 @@
       min-height: 100vh;
       background: url('background.jpg') center top / cover fixed;
       position: relative;
+      opacity: 0;
+      transition: opacity 0.9s ease;
     }
+    #main.visible { opacity: 1; }
     #main::before {
       content: '';
       position: fixed;
@@ -636,7 +644,7 @@
     </video>
 
     <div class="splash-content">
-      <div class="splash-quote"></div>
+      <div class="splash-quote">" Here's where the story begins "</div>
       <div class="splash-divider">
         <span></span><i>✦</i><span></span>
       </div>
@@ -815,6 +823,7 @@
       splash.style.transition = 'none';
       splash.classList.add('hidden');
       document.body.classList.remove('splash-active');
+      document.getElementById('main').classList.add('visible');
       tryPlayMusic();
     }
 
